@@ -16,19 +16,23 @@ function processFile(file) {
   });
 }
 
-processFile("table1.json");
+//processFile("table1.json");
 
 var checkCoord = function(vertices, X, Y) {
-    Inside = false;
-    for(i=0; i<vertices.length-1; i++) {
-        if(vertices[i][1] >= Y > vertices[i+1][1] || vertices[i][1] <= Y < vertices[i+1][1]) {
-            if(vertices[i][0]+(Y-vertices[i][1])/(vertices[i][0]-vertices[i][1])*(vertices[i][0]-vertices[i][0]) < X){
+    var Inside = false;
+    var j = vertices.length-1;
+    for(i=0; i<vertices.length; i++) {
+        if(vertices[i][1] >= Y && Y > vertices[j][1]
+           || vertices[i][1] < Y && Y <= vertices[j][1]) {
+            if(vertices[i][0]+(Y-vertices[i][1])/(vertices[j][1]-vertices[i][1])*(vertices[j][0]-vertices[i][0]) < X) {
                 Inside = !Inside;
             }
         }
+        j=i;
     }
     return Inside;
 }
+
 
 
 function processPost(request, response, callback) {
@@ -71,11 +75,16 @@ http.createServer(function(request, response) {
     }
 
     if (request.method == 'GET') {
-        var paramsValues = url.parse(request.url, true).query;
+        //var paramsValues = url.parse(request.url, true).query;
         //console.log(request.url.toString());
-
+        console.log("GET recieved");
+        var vertices = [[0,0],[0,5],[5,5],[5,0],[0,0]];
+        var X = 6;
+        var Y = 2;
+        var Inside = checkCoord(vertices, X, Y);
+        console.log(Inside);
         response.writeHead(200, 'OK', {'Content-Type': 'text/plain'});
-        response.write('' + paramsValues.username);
+        response.write('' /*+ request.url + '  ' + paramsValues.username*/);
         response.end();
 
     }
