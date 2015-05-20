@@ -1,0 +1,23 @@
+﻿<ion-view ng-controller="LoginController" title="Login">
+    <ion-pane>
+        <ion-header-bar class="bar-stable">
+            <h1 class="title">HOUSES</h1>
+        </ion-header-bar>
+        <ion-content>
+            <div class="list list-inset">
+                <label class="item item-input">
+                    <input type="text" placeholder="e-mail">
+                </label>
+                <label class="item item-input">
+                    <input type="text" placeholder="password">
+                </label>
+            </div>
+            <button ng-click="submit('123')" class="button button-full button-royal">
+                Submit
+            </button>
+            <button ng-click="httpGet('http://localhost:8080')" class="button button-full button-assertive">
+                GET
+            </button>
+        </ion-content>
+    </ion-pane>
+</ion-view>
