@@ -3,8 +3,9 @@
         <ion-header-bar class="bar-stable">
             <h1 class="title">HOUSES</h1>
         </ion-header-bar>
-        <ion-content>
-            <button ng-click="gps()" class="button button-full button-royal">
+        <ion-content ng-controller="MapController" ng-init="initGoogle()">
+            <div id="map" data-tap-disabled="true"></div>
+            <button ng-click="gps()" style="margin:0px;height:10%;" class="button button-full button-dark">
                 Update Location
             </button>
         </ion-content>

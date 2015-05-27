@@ -3,6 +3,14 @@ var http = require('http'),
     fs = require('fs'),
     querystring = require('querystring'),
     url = require('url');
+    mysql = require('mysql');
+
+var connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'lawrence',
+  password: 'lawrence11',
+  database: 'houses'
+});
 
 function processFile(file) {
   fs.readFile(file, 'utf8', function(err, contents){
@@ -15,8 +23,6 @@ function processFile(file) {
     }
   });
 }
-
-//processFile("table1.json");
 
 var checkCoord = function(vertices, X, Y) {
     var Inside = false;
@@ -32,8 +38,6 @@ var checkCoord = function(vertices, X, Y) {
     }
     return Inside;
 }
-
-
 
 function processPost(request, response, callback) {
     var queryData = "";
@@ -75,17 +79,20 @@ http.createServer(function(request, response) {
     }
 
     if (request.method == 'GET') {
-        //var paramsValues = url.parse(request.url, true).query;
-        //console.log(request.url.toString());
-        console.log("GET recieved");
-        var vertices = [[0,0],[0,5],[5,5],[5,0],[0,0]];
-        var X = 6;
-        var Y = 2;
-        var Inside = checkCoord(vertices, X, Y);
-        console.log(Inside);
+        var paramsValues = url.parse(request.url, true).query.request;
+        console.log ("GET recieved", request.url);
         response.writeHead(200, 'OK', {'Content-Type': 'text/plain'});
-        response.write('' /*+ request.url + '  ' + paramsValues.username*/);
-        response.end();
+        if (paramsValues == 'data') {
+          connection.connect();
+          connection.query("SELECT * FROM faction", function(err, results, fields){
+            if (err) {
+              console.log(err);
+            }
+            response.write('' + results);
+            response.end();
+          });
+          connection.end();
+        };
 
     }
 }).listen(8080);

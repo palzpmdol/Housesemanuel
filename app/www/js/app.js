@@ -8,15 +8,6 @@ angular.module('starter', ['ionic'])
 
 .run(function ($ionicPlatform) {
     $ionicPlatform.ready(function () {
-
-    /*function httpGet(url) {
-        var xmlHttp = new XMLHttpRequest();
-        xmlHttp.open("GET", url, false);
-        xmlHttp.send();
-        return xmlHttp.responseText;
-    };
-    */
-
     // Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
     // for form inputs)
     if(window.cordova && window.cordova.plugins.Keyboard) {
@@ -78,13 +69,38 @@ angular.module('starter', ['ionic'])
 {
     $scope.gps = function () {
         navigator.geolocation.getCurrentPosition(function (location) {
-            $http.get('http://10.0.0.5:8080?longitude=' + location.coords.longitude + '&latitude=' + location.coords.latitude ).
+            $http.get('http://10.0.0.5:8080?longitude=' + location.coords.longitude + '&latitude=' + location.coords.latitude).
                 success(function (data, status, headers, config) {
                 }).
-                error(function (data, status, headers, config) {
-                });
+                error(function (data, status, headers, config) {});
         })
-    }
+    };
+
+    $scope.getData = function () {
+        $http.get('http://10.0.0.5:8080?request=gameData').
+            success(function (data, status, headers, config) {
+
+            }).
+            error(function (data, status, headers, config) {});
+    };
 })
 .controller('UserController', function ($scope, $http, $state) {
+})
+.controller('MapController', function ($scope, $ionicLoading) {
+
+    $scope.initGoogle = function () {
+        var myLatlng = new google.maps.LatLng(-33.9067, 151.2436);
+
+        var mapOptions = {
+            center: myLatlng,
+            zoom: 18,
+            mapTypeId: google.maps.MapTypeId.ROADMAP
+        };
+
+        var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+      //  var userMarker = new google.maps.Marker({myLatlng});
+
+        $scope.map = map;
+    };
 })
