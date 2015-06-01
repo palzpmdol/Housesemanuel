@@ -42,14 +42,51 @@ angular.module('starter', ['ionic'])
         });
     $urlRouterProvider.otherwise('/login');
 })
-.controller('LoginController', function ($scope, $http, $state)
+.factory('GetServerData', function($http)
+{
+    return {
+        locations: function () {
+            return [
+                { "colour": "#FF00FF", "vertice": [] },
+                {
+                    "colour": "#FF0000", "vertice": [
+                      [-33.906755, 151.243568],
+                      [-33.906798, 151.24397],
+                      [-33.90693, 151.243948],
+                      [-33.90692, 151.243835],
+                      [-33.906977, 151.243827],
+                      [-33.906966, 151.243718],
+                      [-33.906909, 151.243726],
+                      [-33.906888, 151.243546]]
+                },
+                { "colour": "#FF00FF", "vertice": [] },
+                { "colour": "#0000FF", "vertice": [] }
+            ];
+
+            /*
+            $http.get('http://10.0.0.5:8080?request=data').
+                success(function (data, status, headers, config) {
+                    return data;
+                }).
+                error(function (data, status, headers, config) {
+                    console.log('err');
+                    return {};
+                });
+            */
+        },
+        currentLocation: function (X, Y) {
+            return { X: X, Y: Y };
+        }
+    }
+})
+.controller('LoginController', function ($scope, $http, $state, GetServerData)
 {
     $scope.submit = function (goTo) {
         $state.go('locations');
     };
 
     $scope.httpGet = function (url) {
-        $http.get('http://10.0.0.5:8080').
+        $http.get('http://127.0.0.1:8080').
             success(function (data, status, headers, config) {
                 console.log('locations');
                 $state.go('locations');
@@ -65,24 +102,53 @@ angular.module('starter', ['ionic'])
 .controller('ErrController', function ($scope, $http, $state)
 {
 })
-.controller('LocationsController', function ($scope, $http, $state)
+.controller('LocationsController', function ($scope, $http, $interval, $state, GetServerData)
 {
+    mapShapes = [];
+
     $scope.gps = function () {
         navigator.geolocation.getCurrentPosition(function (location) {
             $http.get('http://10.0.0.5:8080?longitude=' + location.coords.longitude + '&latitude=' + location.coords.latitude).
                 success(function (data, status, headers, config) {
                 }).
-                error(function (data, status, headers, config) {});
+                error(function (data, status, headers, config) {
+                    console.log('err');
+                });
         })
     };
 
     $scope.getData = function () {
-        $http.get('http://10.0.0.5:8080?request=gameData').
-            success(function (data, status, headers, config) {
-
-            }).
-            error(function (data, status, headers, config) {});
+        var data = GetServerData.locations;
+        //$http.get('http://10.0.0.5:8080?request=data').
+        //    success(function (data, status, headers, config) {
+        if (data != {}) {
+            for (var shape = 0; shape < mapShapes.length; shape++) {
+                mapShapes[shape].setMap(null);
+            };
+            for (var building = 0; building < data.length; building++) {
+                var coords = []
+                for (var coord = 0; coord < data[building].vertice.length; coord++) {
+                    coords.push(new google.maps.LatLng(data[building].vertice[coord][0], new google.maps.LatLng(data[building].vertice[coord][1])));
+                };
+                var shape = new google.maps.Polygon({
+                    paths: coords,
+                    strokeColor: data[building].colour,
+                    strokeOpacity: 0.8,
+                    strokeWeight: 1,
+                    fillColor: data[building].colour,
+                    fillOpacity: 0.8
+                });
+                shape.setMap($scope.map);
+                mapShapes.push(shape);
+            };
+        }
+         //   }).
+         //   error(function (data, status, headers, config) {
+         //       console.log('err');
+         //   });
     };
+
+    $interval($scope.getData(), 30000);
 })
 .controller('UserController', function ($scope, $http, $state) {
 })
@@ -91,15 +157,35 @@ angular.module('starter', ['ionic'])
     $scope.initGoogle = function () {
         var myLatlng = new google.maps.LatLng(-33.9067, 151.2436);
 
+        styles = [
+          {
+              "elementType": "labels.text",
+              "stylers": [
+                { "visibility": "off" }
+              ]
+          }, {
+              "elementType": "labels.icon",
+              "stylers": [
+                { "visibility": "off" }
+              ]
+          }
+        ];
+
         var mapOptions = {
             center: myLatlng,
             zoom: 18,
-            mapTypeId: google.maps.MapTypeId.ROADMAP
+            mapTypeControlOptions: {
+                mapTypeIds: [google.maps.MapTypeId.ROADMAP, 'map_style']
+            }
         };
 
         var map = new google.maps.Map(document.getElementById('map'), mapOptions);
 
-      //  var userMarker = new google.maps.Marker({myLatlng});
+        var styledMap = new google.maps.StyledMapType(styles, { name: "Styled" });
+        map.mapTypes.set('map_style', styledMap);
+        map.setMapTypeId('map_style');
+
+        var userMarker = new google.maps.Marker({ position: myLatlng, map:map});
 
         $scope.map = map;
     };

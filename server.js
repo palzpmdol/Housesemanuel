@@ -2,10 +2,12 @@ var http = require('http'),
     path = require('path'),
     fs = require('fs'),
     querystring = require('querystring'),
-    url = require('url');
+    url = require('url'),
+    async = require('async'),
     mysql = require('mysql');
 
-var connection = mysql.createConnection({
+var pool = mysql.createPool({
+  connectionLimit: 10,
   host: 'localhost',
   user: 'lawrence',
   password: 'lawrence11',
@@ -66,6 +68,77 @@ function processPost(request, response, callback) {
     }
 }
 
+function getFactions(callback) {
+  pool.query("SELECT * FROM faction", function(err, results, fields){
+    var factions = [];
+    if (err) {
+      console.log(err);
+    } else {
+      for (var row = 0; row < results.length; row++) {
+        factions[row] = {
+          "Colour":results[row].Colour,
+          "Name":results[row].Name,
+          "idFaction": results[row].idFaction
+          };
+      }
+    }
+    callback(err, factions);
+  });
+}
+
+function getBuildings(callback) {
+  pool.query("SELECT * FROM building order by idBuilding", function(err, results, field){
+    var buildings = [];
+    if (err) {
+      console.log(err);
+    } else {
+      for (var row = 0; row < results.length; row++) {
+        buildings[row] = {
+          "ControllingFaction":results[row].ControllingFaction,
+          "idBuilding":results[row].idBuilding
+        };
+      }
+    }
+    callback(err, buildings);
+  });
+}
+
+function getBuildingsWithFaction(callback) {
+  pool.query("SELECT building.*, faction.colour FROM building left join faction on building.controllingFaction = faction.idFaction order by idBuilding", function(err, results, field){
+    var buildings = [];
+    if (err) {
+      console.log(err);
+    } else {
+      for (var row = 0; row < results.length; row++) {
+        buildings[row] = {
+          "ControllingFaction":results[row].ControllingFaction,
+          "idBuilding":results[row].idBuilding,
+          "colour":results[row].colour
+        };
+      }
+    }
+    callback(err, buildings);
+  });
+}
+
+function getBuildingVertices(callback) {
+  pool.query("SELECT * FROM vertices order by idBuilding, idVertice", function(err, results, field){
+    var vertices = [];
+    if (err) {
+      console.log(err);
+    } else {
+      for (var row = 0; row < results.length; row++) {
+        vertices[row] = {
+          "idVertice":results[row].idVertice,
+          "idBuilding":results[row].idBuilding,
+          "X":results[row].X,
+          "Y":results[row].Y
+        };
+      }
+    }
+    callback(err, vertices);
+  });
+}
 
 http.createServer(function(request, response) {
     if (request.method == 'POST') {
@@ -80,20 +153,29 @@ http.createServer(function(request, response) {
 
     if (request.method == 'GET') {
         var paramsValues = url.parse(request.url, true).query.request;
-        console.log ("GET recieved", request.url);
         response.writeHead(200, 'OK', {'Content-Type': 'text/plain'});
+
         if (paramsValues == 'data') {
-          connection.connect();
-          connection.query("SELECT * FROM faction", function(err, results, fields){
-            if (err) {
-              console.log(err);
-            }
-            response.write('' + results);
+          async.parallel({
+            //faction: getFactions,
+            building: getBuildingsWithFaction,
+            buildingVertices: getBuildingVertices
+          },
+          function(err, results){
+            var buildingLocation = [];
+            for (var row = 0; row < results.building.length; row++) {
+              var building = {"colour":results.building[row].colour, "vertice":[]};
+              for (var i = 0; i < results.buildingVertices.length; i++) {
+                if (results.buildingVertices[i].idBuilding == results.building[row].idBuilding) {
+                  building.vertice.push([results.buildingVertices[i].X, results.buildingVertices[i].Y]);
+                };
+              };
+              buildingLocation.push(building);
+            };
+            response.write('' + JSON.stringify(buildingLocation));
             response.end();
           });
-          connection.end();
         };
-
-    }
+      }
 }).listen(8080);
 console.log('listening on port 8080...');
