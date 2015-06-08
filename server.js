@@ -41,6 +41,28 @@ var checkCoord = function(vertices, X, Y) {
     return Inside;
 }
 
+var updateLocation = function(user, X, Y) {
+    var vertices = [];
+    pool.query("SELECT * FROM vertices ORDER BY idBuilding, idVertice", function (err, results, field) {
+      for (var building = 0; building < results.length; building++) {
+        if (results[building].idBuilding > vertices.length) {
+          vertices.push([]);
+        };
+        vertices[results[building].idBuilding - 1].push([results[building].X, results[building].Y]);
+      };
+      for (var building = 0; building < vertices.length; building++) {
+        if (checkCoord(vertices[building], X, Y)) {
+          pool.query("UPDATE users SET LocationX = " + X + ", LocationY = " + Y + ", Building = " + building + 1 + " WHERE User = " + user);
+          break;
+        };
+      };
+    });
+}
+
+var signOut = function(user) {
+    pool.query("UPDATE users SET LocationX = null, LocationY = null, Building = null WHERE User = " + user);
+}
+
 function processPost(request, response, callback) {
     var queryData = "";
     if(typeof callback !== 'function') return null;
@@ -56,10 +78,21 @@ function processPost(request, response, callback) {
         });
 
         request.on('end', function() {
-            console.log('raw data: ' + queryData.toString());
-            request.post = querystring.parse(queryData);
-            console.log('parsed data: ' + request.post.username)
-            callback();
+            request.post = JSON.parse(queryData);
+            //request.post = querystring.parse(queryData);
+
+            if (request.url.toLower() === '/setLocation' ) {
+                updateLocation(request.post.User, request.post.X, request.post.Y);
+                callback();
+            } else if (request.url.toLower() === '/signIn' ) {
+                callback();
+            } else if (request.url.toLower() === '/signOut' ) {
+                signOut(request.post.User);
+                callback();
+            } else {
+                response.writeHead(404, {'Content-Type': 'text/plain'}).end();
+                request.connection.destroy();
+            }
         });
 
     } else {
@@ -68,6 +101,7 @@ function processPost(request, response, callback) {
     }
 }
 
+/*
 function getFactions(callback) {
   pool.query("SELECT * FROM faction", function(err, results, fields){
     var factions = [];
@@ -102,6 +136,7 @@ function getBuildings(callback) {
     callback(err, buildings);
   });
 }
+*/
 
 function getBuildingsWithFaction(callback) {
   pool.query("SELECT building.*, faction.colour FROM building left join faction on building.controllingFaction = faction.idFaction order by idBuilding", function(err, results, field){
@@ -143,8 +178,6 @@ function getBuildingVertices(callback) {
 http.createServer(function(request, response) {
     if (request.method == 'POST') {
         processPost(request, response, function() {
-            //console.log(request.post.toString());
-
             response.writeHead(200, "OK", {'Content-Type': 'text/plain'});
             response.write('' + querystring.stringify(request.post));
             response.end();
@@ -157,7 +190,6 @@ http.createServer(function(request, response) {
 
         if (paramsValues == 'data') {
           async.parallel({
-            //faction: getFactions,
             building: getBuildingsWithFaction,
             buildingVertices: getBuildingVertices
           },
@@ -179,3 +211,60 @@ http.createServer(function(request, response) {
       }
 }).listen(8080);
 console.log('listening on port 8080...');
+
+
+
+// Background process to recalculate points and building ownership
+var checkPoints = function() {
+    async.series([
+        UpdateFactionPoints,
+        UpdateControllingFactions
+    ]);
+
+    function UpdateFactionPoints(callback) {
+        pool.query("SELECT idUser, Faction, Building FROM users ORDER BY idUser", function (err, results, field) {
+            async.eachSeries(results, function(result, callbackIn) {
+                    async.parallel([
+                          function(callbackP) { pool.query("UPDATE factionbuilding SET Points = Points + 10 WHERE idBuilding = " + result.Building
+                            + " AND idFaction = " + result.Faction, callbackP) },
+                          function(callbackP) { pool.query("UPDATE factionbuilding SET Points = Points - 3 WHERE idBuilding = " + result.Building
+                            + " AND idFaction != " + result.Faction + " AND Points != 0", callbackP) }
+                        ], function(err) {
+                          if (err) { console.log(err); }
+                          callbackIn();
+                        }
+                    );  //end of parallel
+                }, function(err) {
+                    if (err) { console.log(err); }
+                    callback(err);
+                }
+            );
+        });
+    }
+
+    function UpdateControllingFactions(callback) {
+        pool.query("SELECT idBuilding, max(Points) as maxPoints FROM factionbuilding group by idBuilding", function (err, results, field) {
+            async.eachSeries(results,
+                  function(result, callbackIn) {
+                      pool.query("SELECT idBuilding, idFaction FROM factionbuilding where idBuilding=" + result.idBuilding + " and Points = " + result.maxPoints,
+                          function (err, results1, field1) {
+                             if (err) { console.log(err); }
+                             else {
+                               if (results1.length === 1) {
+                                 pool.query("Update building set ControllingFaction = " + results1[0].idFaction + " where idBuilding = " + results1[0].idBuilding, callbackIn);
+                               } else {
+                                 pool.query("Update building set ControllingFaction = NULL where idBuilding = " + results1[0].idBuilding, callbackIn);
+                               }
+                             }
+                          });
+                  },
+                  function(err) {
+                    if (err) { console.log(err); }
+                  }
+            );
+            callback(err);
+        });
+    }
+};
+
+setInterval(checkPoints, 5000);

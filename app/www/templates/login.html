@@ -1,10 +1,11 @@
 ﻿<ion-view ng-controller="LoginController" title="Login">
     <ion-pane>
-        <ion-header-bar class="bar-stable">
-            <h1 class="title">HOUSES</h1>
-        </ion-header-bar>
         <ion-content>
-            <div class="list list-inset">
+            <h1>HOUSES</h1>
+            <button ng-click="googleLogin()" class="button button-full button-assertive">
+                Sign in with google
+            </button>
+<!--            <div class="list list-inset">
                 <label class="item item-input">
                     <input type="text" placeholder="e-mail">
                 </label>
@@ -17,7 +18,7 @@
             </button>
             <button ng-click="httpGet('http://localhost:8080')" class="button button-full button-assertive">
                 GET
-            </button>
+            </button> -->
         </ion-content>
     </ion-pane>
 </ion-view>

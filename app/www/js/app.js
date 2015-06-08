@@ -3,7 +3,7 @@
 // angular.module is a global place for creating, registering and retrieving Angular modules
 // 'starter' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
-angular.module('starter', ['ionic'])
+angular.module('starter', ['ionic', 'ngCordova'])
 
 
 .run(function ($ionicPlatform) {
@@ -35,11 +35,6 @@ angular.module('starter', ['ionic'])
             templateUrl: 'templates/locations.html',
             controller: 'LocationsController'
         })
-        .state('user', {
-            url: "/users/:userId",
-            templateUrl: "templates/user.html",
-            controller: "UserController"
-        });
     $urlRouterProvider.otherwise('/login');
 })
 .factory('GetServerData', function($http)
@@ -47,7 +42,13 @@ angular.module('starter', ['ionic'])
     return {
         locations: function () {
             return [
-                { "colour": "#FF00FF", "vertice": [] },
+                {
+                    "colour": "#FF00FF", "vertice": [
+                    [-33.906209, 151.243441],
+                    [-33.906245, 151.243699],
+                    [-33.906589, 151.243627],
+                    [-33.906551, 151.243369]]
+                },
                 {
                     "colour": "#FF0000", "vertice": [
                       [-33.906755, 151.243568],
@@ -79,8 +80,14 @@ angular.module('starter', ['ionic'])
         }
     }
 })
-.controller('LoginController', function ($scope, $http, $state, GetServerData)
+.controller('LoginController', function ($scope, $http, $state, GetServerData, $rootScope, $cordovaOauth)
 {
+    $scope.googleLogin = function () {
+        $cordovaOauth.google('873032904860-64qmbbo08smgekt773m59ahfiilus2tf.apps.googleusercontent.com', ['https://www.googleapis.com/auth/urlshortener', 'https://www.googleapis.com/auth/userinfo.email']).then(function (result) {
+            alert(JSON.stringify(result));
+        }, function (error) { });
+    };
+/*
     $scope.submit = function (goTo) {
         $state.go('locations');
     };
@@ -95,21 +102,24 @@ angular.module('starter', ['ionic'])
             error(function (data, status, headers, config) {
                 console.log('err');
                 $state.go('err');
-               //  $state.transitionTo('/err');
+                //  $state.transitionTo('/err');
             });
-    }
+    }; */
 })
 .controller('ErrController', function ($scope, $http, $state)
 {
 })
-.controller('LocationsController', function ($scope, $http, $interval, $state, GetServerData)
+.controller('LocationsController', function ($scope, $http, $interval, $state, GetServerData, $rootScope)
 {
-    mapShapes = [];
+    var mapShapes = [];
+    var userMarker;
 
     $scope.gps = function () {
         navigator.geolocation.getCurrentPosition(function (location) {
-            $http.get('http://10.0.0.5:8080?longitude=' + location.coords.longitude + '&latitude=' + location.coords.latitude).
+            $http.post('http://10.0.0.5:8080', {'User':$rootScope.profile.getEmail(), 'X':location.coords.longitude, 'Y':location.coords.latitude}).
                 success(function (data, status, headers, config) {
+                    userMarker.setMap(null);
+                    userMarker = new google.maps.Marker({ position: new google.maps.LatLng(-33.9067, 151.2436), map: map });
                 }).
                 error(function (data, status, headers, config) {
                     console.log('err');
@@ -118,17 +128,18 @@ angular.module('starter', ['ionic'])
     };
 
     $scope.getData = function () {
-        var data = GetServerData.locations;
+        var data = GetServerData.locations();
         //$http.get('http://10.0.0.5:8080?request=data').
         //    success(function (data, status, headers, config) {
         if (data != {}) {
             for (var shape = 0; shape < mapShapes.length; shape++) {
                 mapShapes[shape].setMap(null);
             };
+            mapShapes = []
             for (var building = 0; building < data.length; building++) {
                 var coords = []
                 for (var coord = 0; coord < data[building].vertice.length; coord++) {
-                    coords.push(new google.maps.LatLng(data[building].vertice[coord][0], new google.maps.LatLng(data[building].vertice[coord][1])));
+                    coords.push(new google.maps.LatLng(data[building].vertice[coord][0], data[building].vertice[coord][1]));
                 };
                 var shape = new google.maps.Polygon({
                     paths: coords,
@@ -138,7 +149,7 @@ angular.module('starter', ['ionic'])
                     fillColor: data[building].colour,
                     fillOpacity: 0.8
                 });
-                shape.setMap($scope.map);
+                shape.setMap($rootScope.map);
                 mapShapes.push(shape);
             };
         }
@@ -148,11 +159,9 @@ angular.module('starter', ['ionic'])
          //   });
     };
 
-    $interval($scope.getData(), 30000);
+    $interval(function () { $scope.getData();}, 30000);
 })
-.controller('UserController', function ($scope, $http, $state) {
-})
-.controller('MapController', function ($scope, $ionicLoading) {
+.controller('MapController', function ($scope, $ionicLoading, $rootScope) {
 
     $scope.initGoogle = function () {
         var myLatlng = new google.maps.LatLng(-33.9067, 151.2436);
@@ -185,8 +194,6 @@ angular.module('starter', ['ionic'])
         map.mapTypes.set('map_style', styledMap);
         map.setMapTypeId('map_style');
 
-        var userMarker = new google.maps.Marker({ position: myLatlng, map:map});
-
-        $scope.map = map;
+        $rootScope.map = map;
     };
 })
