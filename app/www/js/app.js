@@ -84,27 +84,10 @@ angular.module('starter', ['ionic', 'ngCordova'])
 {
     $scope.googleLogin = function () {
         $cordovaOauth.google('873032904860-64qmbbo08smgekt773m59ahfiilus2tf.apps.googleusercontent.com', ['https://www.googleapis.com/auth/urlshortener', 'https://www.googleapis.com/auth/userinfo.email']).then(function (result) {
-            alert(JSON.stringify(result));
+            console.log(JSON.stringify(result));
+            $state.go('locations');
         }, function (error) { });
     };
-/*
-    $scope.submit = function (goTo) {
-        $state.go('locations');
-    };
-
-    $scope.httpGet = function (url) {
-        $http.get('http://127.0.0.1:8080').
-            success(function (data, status, headers, config) {
-                console.log('locations');
-                $state.go('locations');
-                // $state.transitionTo('/locations');
-            }).
-            error(function (data, status, headers, config) {
-                console.log('err');
-                $state.go('err');
-                //  $state.transitionTo('/err');
-            });
-    }; */
 })
 .controller('ErrController', function ($scope, $http, $state)
 {

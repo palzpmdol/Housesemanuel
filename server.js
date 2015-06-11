@@ -4,6 +4,7 @@ var http = require('http'),
     querystring = require('querystring'),
     url = require('url'),
     async = require('async'),
+    request = require('request'),
     mysql = require('mysql');
 
 var pool = mysql.createPool({
@@ -25,6 +26,14 @@ function processFile(file) {
     }
   });
 }
+
+var authenticate = function(token) {
+  request('https://www.googleapis.com/oauth2/v1/tokeninfo?id_token=' + token, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+        return body
+    }
+});
+};
 
 var checkCoord = function(vertices, X, Y) {
     var Inside = false;
@@ -100,43 +109,6 @@ function processPost(request, response, callback) {
         response.end();
     }
 }
-
-/*
-function getFactions(callback) {
-  pool.query("SELECT * FROM faction", function(err, results, fields){
-    var factions = [];
-    if (err) {
-      console.log(err);
-    } else {
-      for (var row = 0; row < results.length; row++) {
-        factions[row] = {
-          "Colour":results[row].Colour,
-          "Name":results[row].Name,
-          "idFaction": results[row].idFaction
-          };
-      }
-    }
-    callback(err, factions);
-  });
-}
-
-function getBuildings(callback) {
-  pool.query("SELECT * FROM building order by idBuilding", function(err, results, field){
-    var buildings = [];
-    if (err) {
-      console.log(err);
-    } else {
-      for (var row = 0; row < results.length; row++) {
-        buildings[row] = {
-          "ControllingFaction":results[row].ControllingFaction,
-          "idBuilding":results[row].idBuilding
-        };
-      }
-    }
-    callback(err, buildings);
-  });
-}
-*/
 
 function getBuildingsWithFaction(callback) {
   pool.query("SELECT building.*, faction.colour FROM building left join faction on building.controllingFaction = faction.idFaction order by idBuilding", function(err, results, field){
